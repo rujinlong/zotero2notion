@@ -35,6 +35,18 @@ def add_day_to_date(date):
     return date
 
 
+def reformat_name(name):
+    new_name = [x.strip() for x in name.split(',')]
+    new_name.reverse()
+    return " ".join(new_name)
+
+
+def reformat_names(names):
+    names_list = [name.replace('.', ' ').strip() for name in names.split(';')]
+    names_list_new = [reformat_name(name) for name in names_list]
+    return ";".join(names_list_new)
+
+
 def add_row(cv, x):
     row = cv.collection.add_row()
     row.name = x['Name']
@@ -47,6 +59,7 @@ def add_row(cv, x):
     row.date_published = notion.collection.NotionDate(datetime.date(Tpublished[0], Tpublished[1], Tpublished[2]))
     row.date_added = notion.collection.NotionDate(datetime.date(Tadded[0], Tadded[1], Tadded[2]))
     row.title = x['Title']
+    row.authors = x['Authors']
 
 
 @click.command()
@@ -77,8 +90,9 @@ def main(zotero_export, impact_factor, token, table_url, checkdup):
     tbl['Date_published'] = tbl.apply(lambda x:add_day_to_date(x['Date'].split(' ')[0]), axis=1)
     tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
     tbl.Impact_factor.fillna(0, inplace=True)
+    tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
     tbl.fillna('', inplace=True)
-    # clms = ['Name', 'Impact_factor', 'Journal', 'PDF', 'Url', 'Date_published', 'Date_added', 'Title']
+    # clms = ['Name', 'Impact_factor', 'Journal', 'PDF', 'Url', 'Date_published', 'Date_added', 'Title', 'Authors']
     # tbl[clms].to_csv(fout, index=False)
 
     ## Add to notion
