@@ -42,9 +42,13 @@ def reformat_name(name):
 
 
 def reformat_names(names):
-    names_list = [name.replace('.', ' ').strip() for name in names.split(';')]
-    names_list_new = [reformat_name(name) for name in names_list]
-    return ";".join(names_list_new)
+    # sometimes names is empty
+    if len(str(names)) > 5:
+        names_list = [name.replace('.', ' ').strip() for name in names.split(';')]
+        names_list_new = [reformat_name(name) for name in names_list]
+        return ";".join(names_list_new)
+    else:
+        return ""
 
 
 def add_row(cv, x):
