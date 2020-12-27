@@ -7,6 +7,7 @@ import re
 import notion
 from notion.client import NotionClient
 import datetime
+import os
 
 
 def file_name(x):
@@ -66,6 +67,16 @@ def add_row(cv, x):
     row.authors = x['Authors']
 
 
+def add_supp_dir():
+    """
+    Create folder to store supplementary materials
+    """
+    os.chdir('/Users/allen/allDrives/seafile/zotero_supp/')
+    fnames = [x for x in os.listdir('/Users/allen/Dropbox/zotero_papers/') if '-' in x]
+    for x in fnames:
+        os.makedirs(x[:-4], exist_ok=True)
+
+
 @click.command()
 @click.option("--zotero_export", '-z', help="zotero_export.csv")
 @click.option("--impact_factor", '-i', help="impact_factor_2020.tsv")
@@ -121,3 +132,4 @@ def main(zotero_export, impact_factor, token, table_url, checkdup):
 
 if __name__ == '__main__':
     main()
+    add_supp_dir()
