@@ -21,6 +21,8 @@ def pdf_url(x):
 
 
 def journal_lower(x):
+    # Sometimes zotero add an extra "the" at the begining of the journal name. It should be removed
+    x = re.sub(r'^the ', '', x)
     try:
         journal = x['Publication Title'].lower()
     except:
@@ -65,6 +67,8 @@ def add_row(cv, x):
     row.date_added = notion.collection.NotionDate(datetime.date(Tadded[0], Tadded[1], Tadded[2]))
     row.title = x['Title']
     row.authors = x['Authors']
+    row.cas = x['Cas']
+    row.subject = x['Subject']
 
 
 def add_supp_dir():
@@ -77,24 +81,38 @@ def add_supp_dir():
         os.makedirs(x[:-4], exist_ok=True)
 
 
-@click.command()
-@click.option("--zotero_export", '-z', help="zotero_export.csv")
-@click.option("--impact_factor", '-i', help="impact_factor_2020.tsv")
-@click.option("--token", '-t', help="token_v2")
-@click.option("--table_url", '-u', help="table url")
-@click.option('--checkdup/--no-checkdup', default=False, help="Check duplication")
-def main(zotero_export, impact_factor, token, table_url, checkdup):
-    """
-    zotero2notion.py -z zotero_export.csv -i impact_factor_2020.tsv -t <token_v2> -u <table_url>
-    """
+def merge_IF_CAS(impact_factor, cas):
+    dfcas = pd.read_csv(cas, sep='\t')
+    dfcas = dfcas[['journal', 'Cas', 'Subject']].copy()
+    dfcas['journal'] = dfcas.apply(lambda x:str(x['journal']).lower(), axis=1)
+    dfcas['Subject'] = dfcas.apply(lambda x:str(x['Subject']).capitalize(), axis=1)
 
-    ## Link paper to impact factor
-    df = pd.read_csv(zotero_export)
-    
     dfif = pd.read_csv(impact_factor, sep='\t')
     dfif.columns = ['journal', "Impact_factor"]
     dfif['journal'] = dfif.apply(lambda x:x['journal'].lower(), axis=1)
     
+    df = dfif.merge(dfcas, on="journal", how="outer").drop_duplicates()
+    df.Impact_factor.fillna(0, inplace=True)
+    df.Cas.fillna("NA", inplace=True)
+    df.Subject.fillna("NA", inplace=True)
+    return df.groupby('journal', as_index=False).agg({'Subject' : '; '.join, 'Impact_factor': 'first', 'Cas' : 'first'})
+
+@click.command()
+@click.option("--zotero_export", '-z', help="zotero_export.csv")
+@click.option("--impact_factor", '-i', help="impact_factor_2020.tsv")
+@click.option("--cas", '-c', help="cas2019.tsv")
+@click.option("--token", '-t', help="token_v2")
+@click.option("--table_url", '-u', help="table url")
+@click.option('--checkdup/--no-checkdup', default=False, help="Check duplication")
+def main(zotero_export, impact_factor, cas, token, table_url, checkdup):
+    """
+    zotero2notion.py -z zotero_export.csv -i impact_factor_2020.tsv -c cas2019.tsv -t <token_v2> -u <table_url>
+    """
+
+    dfif = merge_IF_CAS(impact_factor, cas)
+    
+    ## Link paper to impact factor and CAS
+    df = pd.read_csv(zotero_export)
     df['PDF'] = df.apply(lambda x: pdf_url(x), axis=1)
     df['Name'] = df.apply(lambda x: file_name(x), axis=1)
     df['journal'] = df.apply(lambda x:journal_lower(x), axis=1)
@@ -104,9 +122,12 @@ def main(zotero_export, impact_factor, token, table_url, checkdup):
     tbl['Date_added'] = tbl.apply(lambda x:x['Date Added'].split(' ')[0], axis=1)
     tbl['Date_published'] = tbl.apply(lambda x:add_day_to_date(x['Date'].split(' ')[0]), axis=1)
     tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
-    tbl.Impact_factor.fillna(0, inplace=True)
     tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
     tbl.fillna('', inplace=True)
+
+    # Some journals in zotero are not in CAS or JCR, set them as NA
+    # todo: manually check these recores, because most of them are false renamed by zotero
+    tbl['Cas'] = tbl.apply(lambda x: x['Cas'] if len(x['Cas'])==2 else 'NA', axis=1)
     # clms = ['Name', 'Impact_factor', 'Journal', 'PDF', 'Url', 'Date_published', 'Date_added', 'Title', 'Authors']
     # tbl[clms].to_csv(fout, index=False)
 
