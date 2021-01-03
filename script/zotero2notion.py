@@ -22,9 +22,9 @@ def pdf_url(x):
 
 def journal_lower(x):
     # Sometimes zotero add an extra "the" at the begining of the journal name. It should be removed
-    x = re.sub(r'^the ', '', x)
+    journal = re.sub(r'^the ', '', x['Publication Title'])
     try:
-        journal = x['Publication Title'].lower()
+        journal = journal.lower()
     except:
         journal = "na"
     return journal
