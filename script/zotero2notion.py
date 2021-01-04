@@ -123,6 +123,9 @@ def main(zotero_export, impact_factor, cas, token, table_url, checkdup):
     tbl['Date_published'] = tbl.apply(lambda x:add_day_to_date(x['Date'].split(' ')[0]), axis=1)
     tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
     tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
+    tbl.Impact_factor.fillna(0, inplace=True)
+    tbl.Cas.fillna("NA", inplace=True)
+    tbl.Subject.fillna("NA", inplace=True)
     tbl.fillna('', inplace=True)
 
     # Some journals in zotero are not in CAS or JCR, set them as NA
