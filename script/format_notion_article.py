@@ -31,9 +31,9 @@ def main(notion_draft, bibtex, manuscript):
     for record in items:
         ref_id, notion_Name = extract_articleID_and_filename(record)
         if notion_Name != None:
-            rst += [[ref_id, notion_Name]]
+            rst += [[ref_id, notion_Name, record]]
     
-    df = pd.DataFrame(rst, columns=['ref_id', 'notion_Name'])
+    df = pd.DataFrame(rst, columns=['ref_id', 'notion_Name', 'bibtex_rec'])
     recs = df.to_dict(orient="records")
     
     # replace in draft
@@ -41,12 +41,18 @@ def main(notion_draft, bibtex, manuscript):
         draft = fh.read()
         draft = re.sub(r'\(https://www.notion.so/[\w\"\'+-]*\)', '', draft)
     
+    references = []
     for rec in recs:
-        draft = draft.replace(rec['notion_Name'], rec['ref_id'])
+        if rec['notion_Name'] in draft:
+            draft = draft.replace(rec['notion_Name'], rec['ref_id'])
+            references.append('@'+rec['bibtex_rec'])
     
     draft = re.sub(r'\],[\s]+\[@', '; @', draft)
     with open(manuscript, 'w') as fh:
         fh.write(draft)
+
+    with open(manuscript+".bibtex", 'w') as fh:
+        fh.write('\n'.join(references))
         
 
 if __name__ == '__main__':
