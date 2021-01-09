@@ -16,7 +16,11 @@ def file_name(x):
 
 def pdf_url(x):
     fname = x['File Attachments'].split('/')[-1]
-    url = "http://jinlong.local:8668/zotero_papers/" + urllib.parse.quote(fname)
+    fname_split_by_dot = fname.split('.')
+    fname_prefix = '.'.join(fname_split_by_dot[:-1])
+    fname_suffix = fname_split_by_dot[-1][:3]
+    fname_corrected = '{}.{}'.format(fname_prefix, fname_suffix)
+    url = "http://jinlong.local:8668/zotero_papers/" + urllib.parse.quote(fname_corrected)
     return url
 
 
