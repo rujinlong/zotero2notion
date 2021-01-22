@@ -31,3 +31,4 @@ Import Zotero library to Notion
 zotero2notion.py -z export.csv -i data/impact_factor_2020.tsv -c data/cas2019.tsv -t "<token>" -u "<notion database url>"
 ```
 
+![zotero](./imgs/zotero.png)
