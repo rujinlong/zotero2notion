@@ -65,10 +65,10 @@ def add_row(cv, x):
     row.journal = x['Journal']
     row.pdf = x['PDF']
     row.url = x['Url']
-    Tadded = [int(i) for i in x['Date_added'].split('-')]
+    Tadded = [int(i) for i in re.split("[-: ]", x['Date Added'])]
     Tpublished = [int(i) for i in x['Date_published'].split('-')]
     row.date_published = notion.collection.NotionDate(datetime.date(Tpublished[0], Tpublished[1], Tpublished[2]))
-    row.date_added = notion.collection.NotionDate(datetime.date(Tadded[0], Tadded[1], Tadded[2]))
+    row.date_added = notion.collection.NotionDate(datetime.datetime(Tadded[0], Tadded[1], Tadded[2],Tadded[3], Tadded[4]))
     row.title = x['Title']
     row.authors = x['Authors']
     row.cas = x['Cas']
