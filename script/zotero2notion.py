@@ -8,6 +8,9 @@ import notion
 from notion.client import NotionClient
 import datetime
 import os
+from dateutil import parser
+from pyzotero import zotero
+import pytz
 
 
 def file_name(x):
@@ -42,6 +45,19 @@ def add_day_to_date(date):
     return date
 
 
+def combine_authors(creators):
+    authors = []
+    if len(creators) > 0:
+        for creator in creators:
+            lastName = creator.get('lastName')
+            firstName = creator.get('firstName')
+            if lastName and firstName:
+                author = lastName.strip() + ', ' + firstName.strip()
+                authors.append(author)
+        Author = '; '.join(authors)
+        return Author
+
+
 def reformat_name(name):
     new_name = [x.strip() for x in name.split(',')]
     new_name.reverse()
@@ -65,10 +81,8 @@ def add_row(cv, x):
     row.journal = x['Journal']
     row.pdf = x['PDF']
     row.url = x['Url']
-    Tadded = [int(i) for i in re.split("[-: ]", x['Date Added'])]
-    Tpublished = [int(i) for i in x['Date_published'].split('-')]
-    row.date_published = notion.collection.NotionDate(datetime.date(Tpublished[0], Tpublished[1], Tpublished[2]))
-    row.date_added = notion.collection.NotionDate(datetime.datetime(Tadded[0], Tadded[1], Tadded[2],Tadded[3], Tadded[4]))
+    row.date_published = notion.collection.NotionDate(x['Date_published'])
+    row.date_added = notion.collection.NotionDate(x['Date_added'])
     row.title = x['Title']
     row.authors = x['Authors']
     row.cas = x['Cas']
@@ -101,61 +115,123 @@ def merge_IF_CAS(impact_factor, cas):
     df.Subject.fillna("NA", inplace=True)
     return df.groupby('journal', as_index=False).agg({'Subject' : '; '.join, 'Impact_factor': 'first', 'Cas' : 'first'})
 
+
+def select_attachment_items(items):
+    items_with_attachment = []
+    for item in items:
+        data = item.get('data')
+        attachment = data.get('contentType')
+        if attachment == "application/pdf":
+            items_with_attachment.append(data)
+    return items_with_attachment
+
+
+def add_parent_info(zot, child):
+    parent = zot.item(child['parentItem'])['data']
+    
+    child['Author'] = combine_authors(parent.get('creators'))
+    child['Date_published'] = parser.parse(parent.get('date'))
+    child['Publication Title'] = parent.get('publicationTitle')
+    child['Url'] = parent.get('url')
+    child['Title'] = parent.get('title')
+    child['File Attachments'] = child.get('filename')
+    child['Date_added'] = parser.parse(child.get('dateAdded')).astimezone()
+
+    keys = ['Author', 'Date_published', 'Publication Title', 'File Attachments', 'Date_added', 'Url', 'Title']
+    return {k:child[k] for k in keys}
+
+
+def fetch_zotero_records(library_id, api_key, topn):
+    zot = zotero.Zotero(library_id, "user", api_key)
+    zot.add_parameters(sort="dateAdded", direction="desc", limit=topn*2)
+    items = zot.items()
+    children = select_attachment_items(items)
+    
+    recs = []
+    for child in children:
+        recs.append(add_parent_info(zot, child))
+    
+    if len(recs) == 1:
+        df = pd.DataFrame.from_records(recs, index=[0])
+    elif len(recs) > 1:
+        df = pd.DataFrame.from_records(recs)
+    return df
+
+
+def filter_new_zotero_recs(notion_latest, rec_zotero):
+    time_notion = pytz.UTC.localize(notion_latest.date_added.start)
+    time_zotero = rec_zotero["Date_added"]
+    
+    # If zotero records are newser than notion latest records
+    if time_zotero > time_notion:
+        update = True
+    else:
+        update = False
+    return update
+
+
 @click.command()
-@click.option("--zotero_export", '-z', help="zotero_export.csv")
 @click.option("--impact_factor", '-i', help="impact_factor_2020.tsv")
 @click.option("--cas", '-c', help="cas2019.tsv")
-@click.option("--token", '-t', help="token_v2")
-@click.option("--table_url", '-u', help="table url")
-@click.option('--checkdup/--no-checkdup', default=False, help="Check duplication")
-def main(zotero_export, impact_factor, cas, token, table_url, checkdup):
+@click.option("--notion_token", '-t', help="Notion token_v2")
+@click.option("--notion_table_url", '-u', help="Notion table url")
+@click.option("--zotero_library_id", '-l', help="Zotero library id")
+@click.option("--zotero_api_key", '-k', help="Zotero api key")
+@click.option("--zotero_topn", '-n', help="Fetch n most recent records in zotero to compare with the most recent records in Notion")
+def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, zotero_api_key, zotero_topn):
     """
-    zotero2notion.py -z zotero_export.csv -i impact_factor_2020.tsv -c cas2019.tsv -t <token_v2> -u <table_url>
+    Usage:
+    
+    zotero2notion.py -i impact_factor_2020.tsv \
+    -c cas2019.tsv \
+    -t "<notion_token>" \
+    -u "<notion_table_url>" \
+    -l "<zotero_library_id>" \
+    -k "<zotero_api_key>" \
+    -n <zotero_topn>
     """
-
-    dfif = merge_IF_CAS(impact_factor, cas)
     
-    ## Link paper to impact factor and CAS
-    df = pd.read_csv(zotero_export)
-    df['PDF'] = df.apply(lambda x: pdf_url(x), axis=1)
-    df['Name'] = df.apply(lambda x: file_name(x), axis=1)
-    df['journal'] = df.apply(lambda x:journal_lower(x), axis=1)
+    # Fetch records in notion table
+    client = NotionClient(token_v2=notion_token)
+    cv = client.get_collection_view(notion_table_url)
+    notion_records = cv.collection.get_rows(sort=[{"direction": "descending", 
+                                                   "property": "Date_added"}])
+    notion_latest = notion_records[0]
     
-    tbl = df.merge(dfif, on='journal', how='left')
-    tbl['Impact_factor'] = tbl.apply(lambda x:round(x['Impact_factor'], 1), axis=1)
-    tbl['Date_added'] = tbl.apply(lambda x:x['Date Added'].split(' ')[0], axis=1)
-    tbl['Date_published'] = tbl.apply(lambda x:add_day_to_date(x['Date'].split(' ')[0]), axis=1)
-    tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
-    tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
-    tbl.Impact_factor.fillna(0, inplace=True)
-    tbl.Cas.fillna("NA", inplace=True)
-    tbl.Subject.fillna("NA", inplace=True)
-    tbl.fillna('', inplace=True)
+    # Fetch records in zotero library 
+    df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
+    df['update'] = df.apply(lambda x:filter_new_zotero_recs(notion_latest, x), axis=1)
+    df = df[df['update']==True]
+    
+    if len(df) > 0:
+        # Change journal name to lowercase for easier matching with impact facter and CAS table
+        df['journal'] = df.apply(lambda x:journal_lower(x), axis=1)
 
-    # Some journals in zotero are not in CAS or JCR, set them as NA
-    # todo: manually check these recores, because most of them are false renamed by zotero
-    tbl['Cas'] = tbl.apply(lambda x: x['Cas'] if len(x['Cas'])==2 else 'NA', axis=1)
-    # clms = ['Name', 'Impact_factor', 'Journal', 'PDF', 'Url', 'Date_published', 'Date_added', 'Title', 'Authors']
-    # tbl[clms].to_csv(fout, index=False)
+        # Link records with impact factor and CAS classification
+        dfif = merge_IF_CAS(impact_factor, cas)
+        tbl = df.merge(dfif, on='journal', how='left')
 
-    ## Add to notion
-    recs = tbl.to_dict(orient="records")
+        # Add extra information based on zotero metadata
+        tbl['PDF'] = tbl.apply(lambda x: pdf_url(x), axis=1)
+        tbl['Name'] = tbl.apply(lambda x: file_name(x), axis=1)
+        tbl['Impact_factor'] = tbl.apply(lambda x:round(x['Impact_factor'], 1), axis=1)
+        tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
+        tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
+        tbl.Impact_factor.fillna(0, inplace=True)
+        tbl.Cas.fillna("NA", inplace=True)
+        tbl.Subject.fillna("NA", inplace=True)
+        tbl.fillna('', inplace=True)
 
-    # Get notion table
-    client = NotionClient(token_v2=token)
-    cv = client.get_collection_view(table_url)
+        # Some journals in zotero are not in CAS or JCR, set them as NA
+        # todo: manually check these recores, because most of them are false renamed by zotero
+        tbl['Cas'] = tbl.apply(lambda x: x['Cas'] if len(x['Cas'])==2 else 'NA', axis=1)
 
-    if checkdup:
-        # List existed records
-        recs_exist = [x.name for x in cv.collection.get_rows()]
-        # Delete records which already exists in table
-        recs_add = [x for x in recs if x['Name'] not in recs_exist]
+        ## Add to notion
+        recs = tbl.to_dict(orient="records")
+        for rec in recs:
+            add_row(cv, rec)
     else:
-        recs_add = recs
-
-    # Add new rows
-    for rec in recs_add:
-        add_row(cv, rec)
+        print("No new records in zotero library!")
     
 
 if __name__ == '__main__':
