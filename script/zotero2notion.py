@@ -11,6 +11,7 @@ import os
 from dateutil import parser
 from pyzotero import zotero
 import pytz
+from tzlocal import get_localzone
 
 
 def file_name(x):
@@ -158,8 +159,7 @@ def fetch_zotero_records(library_id, api_key, topn):
     return df
 
 
-def filter_new_zotero_recs(notion_latest, rec_zotero):
-    time_notion = pytz.UTC.localize(notion_latest.date_added.start)
+def filter_new_zotero_recs(time_notion, rec_zotero):
     time_zotero = rec_zotero["Date_added"]
     
     # If zotero records are newser than notion latest records
@@ -197,10 +197,13 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
     notion_records = cv.collection.get_rows(sort=[{"direction": "descending", 
                                                    "property": "Date_added"}])
     notion_latest = notion_records[0]
+    # time_notion = pytz.UTC.localize(notion_latest.date_added.start)
+    mytz = pytz.timezone(get_localzone().zone)
+    time_notion = mytz.localize(notion_latest.date_added.start)
     
     # Fetch records in zotero library 
     df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
-    df['update'] = df.apply(lambda x:filter_new_zotero_recs(notion_latest, x), axis=1)
+    df['update'] = df.apply(lambda x:filter_new_zotero_recs(time_notion, x), axis=1)
     df = df[df['update']==True]
     
     if len(df) > 0:
@@ -235,5 +238,6 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
     
 
 if __name__ == '__main__':
-    main()
     add_supp_dir()
+    main()
+    
