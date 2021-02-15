@@ -36,3 +36,10 @@ zotero2notion.py -i ../data/impact_factor_2020.tsv \
 ```
 
 ![zotero](./imgs/zotero.png)
+
+# TODO
+
+- Add configuration file
+- Automatic update (every one hour)
+- Clean code
+- Automatic update (when there is new records in zotero)
