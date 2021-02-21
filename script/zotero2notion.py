@@ -159,11 +159,14 @@ def fetch_zotero_records(library_id, api_key, topn):
     return df
 
 
-def filter_new_zotero_recs(time_notion, rec_zotero):
+def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
     time_zotero = rec_zotero["Date_added"]
+    title_zotero = file_name(rec_zotero)
     
+    if title_zotero == title_notion:
+        update = False
     # If zotero records are newser than notion latest records
-    if time_zotero > time_notion:
+    elif time_zotero > time_notion:
         update = True
     else:
         update = False
@@ -200,10 +203,11 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
     # time_notion = pytz.UTC.localize(notion_latest.date_added.start)
     mytz = pytz.timezone(get_localzone().zone)
     time_notion = mytz.localize(notion_latest.date_added.start)
+    title_notion = notion_latest.name
     
     # Fetch records in zotero library 
     df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
-    df['update'] = df.apply(lambda x:filter_new_zotero_recs(time_notion, x), axis=1)
+    df['update'] = df.apply(lambda x:filter_new_zotero_recs(time_notion, title_notion, x), axis=1)
     df = df[df['update']==True]
     
     if len(df) > 0:
