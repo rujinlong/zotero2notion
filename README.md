@@ -1,32 +1,32 @@
-# notion_zotero
+# zotero2notion
 
 Import Zotero library to Notion 
 
-## Requirements
+## Install
 
-- Python 3
-- [notion-py](https://github.com/jamalex/notion-py)
-- [pyzotero](https://github.com/urschrei/pyzotero)
-- pandas
-- click
+1. Clone or download repo 
+2. [Install conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/#regular-installation), then run the following code,
 
+```sh
+conda env create -f environment.yml
+conda activate zotero2notion
+```
 
 ## Usage
 
-1. Clone or download repo 
-
-2. Create a database with following columns in Notion, and copy the database url
+1. Create a database with following columns in Notion, and copy the database url
 
 ![zotero_db_in_notion](./imgs/zotero_db.png)
 
-3. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
+2. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
 
-4. Obtain your zotero library id and api key
+3. Obtain your zotero library id and api key
 
-5. Run command
+4. Run command,
 
 ```sh
-zotero2notion.py -i ../data/impact_factor_2020.tsv \
+cd scripts
+./zotero2notion.py -i ../data/impact_factor_2020.tsv \
     -c ../data/cas2019.tsv \
     -t "<notion_token>" \
     -u "<notion_table_url>" \
