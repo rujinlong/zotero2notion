@@ -81,6 +81,7 @@ def add_row(cv, x):
     row.impact_factor = x['Impact_factor']
     row.journal = x['Journal']
     row.pdf = x['PDF']
+    row.download = row.pdf.replace('http://jinlong.local:8668/zotero_papers', 'https://gitlab.com/mxwlrzytyl/whygssqqxjqhm/-/raw/master/papers')
     row.url = x['Url']
     row.date_published = notion.collection.NotionDate(x['Date_published'])
     row.date_added = notion.collection.NotionDate(x['Date_added'])
