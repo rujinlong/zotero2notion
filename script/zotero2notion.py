@@ -80,8 +80,8 @@ def add_row(cv, x):
     row.name = x['Name']
     row.impact_factor = x['Impact_factor']
     row.journal = x['Journal']
-    row.pdf = x['PDF']
-    row.download = row.pdf.replace('http://jinlong.local:8668/zotero_papers', 'https://gitlab.com/mxwlrzytyl/whygssqqxjqhm/-/raw/master/papers')
+    row.local_file = x['Local_file']
+    row.pdf = row.local_file.replace('http://jinlong.local:8668/zotero_papers', 'https://gitlab.com/mxwlrzytyl/whygssqqxjqhm/-/raw/master/papers')
     row.url = x['Url']
     row.date_published = notion.collection.NotionDate(x['Date_published'])
     row.date_added = notion.collection.NotionDate(x['Date_added'])
@@ -220,7 +220,7 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
         tbl = df.merge(dfif, on='journal', how='left')
 
         # Add extra information based on zotero metadata
-        tbl['PDF'] = tbl.apply(lambda x: pdf_url(x), axis=1)
+        tbl['Local_file'] = tbl.apply(lambda x: pdf_url(x), axis=1)
         tbl['Name'] = tbl.apply(lambda x: file_name(x), axis=1)
         tbl['Impact_factor'] = tbl.apply(lambda x:round(x['Impact_factor'], 1), axis=1)
         tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
