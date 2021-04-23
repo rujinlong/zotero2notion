@@ -10,6 +10,7 @@ Import Zotero library to Notion
 ```sh
 conda env create -f environment.yml
 conda activate zotero2notion
+pip install notion
 ```
 
 ## Usage
