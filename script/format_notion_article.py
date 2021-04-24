@@ -48,6 +48,10 @@ def main(notion_draft, bibtex, manuscript):
             references.append('@'+rec['bibtex_rec'])
     
     draft = re.sub(r'\],[\s]+\[@', '; @', draft)
+
+    # Add header
+    header = """---\ntitle: "Title"\noutput: word_document\nbibliography: {}\n---\n\n""".format(bibtex)
+    draft = header + draft + "\n\n# References\n"
     with open(manuscript, 'w') as fh:
         fh.write(draft)
 
