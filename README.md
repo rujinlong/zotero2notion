@@ -29,7 +29,7 @@ pip install notion
 
 ```sh
 # Add most recent 10 papers to notion
-./scripts/zotero2notion.py -c config.ini -n 10
+./script/zotero2notion.py -c config.ini -n 10
 ```
 
 # TODO
