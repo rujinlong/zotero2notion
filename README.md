@@ -15,7 +15,7 @@ pip install notion
 
 ## Usage
 
-1. Create a new database, then remove all rows in it
+1. Create a new database, remove all rows in it
 
 2. Copy the database url
 
@@ -28,13 +28,9 @@ pip install notion
 5. Run command,
 
 ```sh
-cd scripts
-
 # Add most recent 10 papers to notion
-./zotero2notion.py -c config.ini -n 10
+./scripts/zotero2notion.py -c config.ini -n 10
 ```
-
-![zotero](./imgs/zotero.png)
 
 # TODO
 
