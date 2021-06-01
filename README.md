@@ -35,6 +35,9 @@ cd scripts
     -u "<notion_table_url>" \
     -l "<zotero_library_id>" \
     -k "<zotero_api_key>" \
+    -p "<pdf_local_url>" \
+    -r "<pdf_remote_url>" \
+    -s "<supplementary file path>" \
     -n <zotero_topn>
 ```
 

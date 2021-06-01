@@ -18,13 +18,13 @@ def file_name(x):
     return re.sub(r'.pdf$', '', x['File Attachments'].split('/')[-1])
 
 
-def pdf_url(x):
+def pdf_url(x, pdf_local_url):
     fname = x['File Attachments'].split('/')[-1]
     fname_split_by_dot = fname.split('.')
     fname_prefix = '.'.join(fname_split_by_dot[:-1])
     fname_suffix = fname_split_by_dot[-1][:3]
     fname_corrected = '{}.{}'.format(fname_prefix, fname_suffix)
-    url = "http://jinlong.local:8668/zotero_papers/" + urllib.parse.quote(fname_corrected)
+    url = pdf_local_url + urllib.parse.quote(fname_corrected)
     return url
 
 
@@ -75,13 +75,13 @@ def reformat_names(names):
         return ""
 
 
-def add_row(cv, x):
+def add_row(cv, x, pdf_local_url, pdf_remote_url):
     row = cv.collection.add_row()
     row.name = x['Name']
     row.impact_factor = x['Impact_factor']
     row.journal = x['Journal']
     row.local_file = x['Local_file']
-    row.pdf = row.local_file.replace('http://jinlong.local:8668/zotero_papers', 'https://gitlab.com/mxwlrzytyl/whygssqqxjqhm/-/raw/master/papers')
+    row.pdf = row.local_file.replace(pdf_local_url, pdf_remote_url)
     row.url = x['Url']
     row.date_published = notion.collection.NotionDate(x['Date_published'])
     row.date_added = notion.collection.NotionDate(x['Date_added'])
@@ -91,12 +91,15 @@ def add_row(cv, x):
     row.subject = x['Subject']
 
 
-def add_supp_dir():
+def add_supp_dir(pdf_local_folder, supplementary_file_path):
     """
     Create folder to store supplementary materials
     """
-    os.chdir('/Users/allen/allDrives/seafile/zotero_supp/')
-    fnames = [x for x in os.listdir('/Users/allen/Dropbox/zotero_papers/') if '-' in x]
+    pdf_local_folder = os.path.abspath(os.path.expanduser(pdf_local_folder))
+    supplementary_file_path = os.path.abspath(os.path.expanduser(supplementary_file_path))
+    os.chdir(supplementary_file_path)
+    pdfs = os.listdir(pdf_local_folder)
+    fnames = [x for x in pdfs if '-' in x]
     for x in fnames:
         os.makedirs(x[:-4], exist_ok=True)
 
@@ -182,7 +185,11 @@ def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
 @click.option("--zotero_library_id", '-l', help="Zotero library id")
 @click.option("--zotero_api_key", '-k', help="Zotero api key")
 @click.option("--zotero_topn", '-n', type=int, help="Fetch n most recent records in zotero to compare with the most recent records in Notion")
-def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, zotero_api_key, zotero_topn):
+@click.option("--pdf_local_folder", '-f', default="~/Dropbox/zotero_papers/", help="PDF path on local")
+@click.option("--pdf_local_url", '-p', default="http://jinlong.local:8668/zotero_papers/", help="PDF url on local server")
+@click.option("--pdf_remote_url", '-r', default="https://gitlab.com/mxwlrzytyl/whygssqqxjqhm/-/raw/master/papers/", help="PDF path on remote server")
+@click.option("--supplementary_path", "-s", default="~/allDrives/seafile/zotero_supp/", help="Create folder for supplementary files")
+def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, zotero_api_key, zotero_topn, pdf_local_folder, pdf_local_url, pdf_remote_url, supplementary_path):
     """
     Usage:
     
@@ -255,7 +262,7 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
         tbl = df.merge(dfif, on='journal', how='left')
 
         # Add extra information based on zotero metadata
-        tbl['Local_file'] = tbl.apply(lambda x: pdf_url(x), axis=1)
+        tbl['Local_file'] = tbl.apply(lambda x: pdf_url(x, pdf_local_url), axis=1)
         tbl['Name'] = tbl.apply(lambda x: file_name(x), axis=1)
         tbl['Impact_factor'] = tbl.apply(lambda x:round(x['Impact_factor'], 1), axis=1)
         tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
@@ -272,12 +279,13 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
         ## Add to notion
         recs = tbl.to_dict(orient="records")
         for rec in recs:
-            add_row(cv, rec)
+            add_row(cv, rec, pdf_local_url, pdf_remote_url)
     else:
         print("No new records in zotero library!")
     
+    # Create folder for supplementary files
+    add_supp_dir(pdf_local_folder, supplementary_path)
+
 
 if __name__ == '__main__':
-    add_supp_dir()
     main()
-    
