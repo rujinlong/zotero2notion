@@ -15,37 +15,28 @@ pip install notion
 
 ## Usage
 
-1. Create a new database, and copy the database url
+1. Create a new database, then remove all rows in it
 
-2. Remove all row in the new database
+2. Copy the database url
 
-3. Copy the database url
+3. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
 
-4. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
+4. Obtain your zotero library id and api key
 
-5. Obtain your zotero library id and api key
-
-6. Run command,
+5. Run command,
 
 ```sh
 cd scripts
-./zotero2notion.py -i ../data/impact_factor_2020.tsv \
-    -c ../data/cas2019.tsv \
-    -t "<notion_token>" \
-    -u "<notion_table_url>" \
-    -l "<zotero_library_id>" \
-    -k "<zotero_api_key>" \
-    -p "<pdf_local_url>" \
-    -r "<pdf_remote_url>" \
-    -s "<supplementary file path>" \
-    -n <zotero_topn>
+
+# Add most recent 10 papers to notion
+./zotero2notion.py -c config.ini -n 10
 ```
 
 ![zotero](./imgs/zotero.png)
 
 # TODO
 
-- Add configuration file
-- Automatic update (every one hour)
-- Clean code
-- Automatic update (when there is new records in zotero)
+[x] Add configuration file
+[] Automatic update (every one hour)
+[] Clean code
+[] Automatic update (when there is new records in zotero)

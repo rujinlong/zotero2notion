@@ -12,6 +12,7 @@ from dateutil import parser
 from pyzotero import zotero
 import pytz
 from tzlocal import get_localzone
+import configparser
 
 
 def file_name(x):
@@ -178,29 +179,28 @@ def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
 
 
 @click.command()
-@click.option("--impact_factor", '-i', help="impact_factor_2020.tsv")
-@click.option("--cas", '-c', help="cas2019.tsv")
-@click.option("--notion_token", '-t', help="Notion token_v2")
-@click.option("--notion_table_url", '-u', help="Notion table url")
-@click.option("--zotero_library_id", '-l', help="Zotero library id")
-@click.option("--zotero_api_key", '-k', help="Zotero api key")
+@click.option("--config", '-c', help="config.ini")
 @click.option("--zotero_topn", '-n', type=int, help="Fetch n most recent records in zotero to compare with the most recent records in Notion")
-@click.option("--pdf_local_folder", '-f', default="~/Dropbox/zotero_papers/", help="PDF path on local")
-@click.option("--pdf_local_url", '-p', default="http://jinlong.local:8668/zotero_papers/", help="PDF url on local server")
-@click.option("--pdf_remote_url", '-r', default="https://gitlab.com/mxwlrzytyl/whygssqqxjqhm/-/raw/master/papers/", help="PDF path on remote server")
-@click.option("--supplementary_path", "-s", default="~/allDrives/seafile/zotero_supp/", help="Create folder for supplementary files")
-def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, zotero_api_key, zotero_topn, pdf_local_folder, pdf_local_url, pdf_remote_url, supplementary_path):
+def main(config, zotero_topn):
     """
     Usage:
     
-    zotero2notion.py -i impact_factor_2020.tsv \
-    -c cas2019.tsv \
-    -t "<notion_token>" \
-    -u "<notion_table_url>" \
-    -l "<zotero_library_id>" \
-    -k "<zotero_api_key>" \
-    -n <zotero_topn>
+    zotero2notion.py -c config.idi -n <zotero_topn>
     """
+
+    # Read config file
+    cfg = configparser.ConfigParser()
+    cfg.read(config)
+    impact_factor = cfg['Resources']['impact_factor']
+    cas = cfg['Resources']['cas']
+    notion_token = cfg['Notion']['notion_token']
+    notion_table_url = cfg['Notion']['notion_table_url']
+    zotero_library_id = cfg['Zotero']['zotero_library_id']
+    zotero_api_key = cfg['Zotero']['zotero_api_key']
+    pdf_local_folder = cfg['PDFs']['pdf_local_folder']
+    pdf_local_url = cfg['PDFs']['pdf_local_url']
+    pdf_remote_url = cfg['PDFs']['pdf_remote_url']
+    supplementary_path = cfg['PDFs']['supplementary_path']
 
     properties = {'Subject': {'name': 'Subject', 'type': 'text'},
                 'Authors': {'name': 'Authors', 'type': 'text'},

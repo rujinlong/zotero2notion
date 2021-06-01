@@ -1,0 +1,17 @@
+[Resources]
+impact_factor = ~/github/zotero2notion/data/impact_factor_2020.tsv
+cas = ~/github/zotero2notion/data/cas2019.tsv
+
+[Notion]
+notion_token = abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc
+notion_table_url = https://www.notion.so/yourworkspace/defgdefgdefgdefgdefgdefgdefgdefg?v=hijkhijkhijkhijkhijkhijkhijkhijk
+
+[Zotero]
+zotero_library_id = 1231231
+zotero_api_key = lmnlmnlmnlmnlmnlmnlmnlmn
+
+[PDFs]
+pdf_local_folder = /Users/username/Dropbox/zotero_papers
+pdf_local_url = http://machinename.local:8888/zotero_papers/
+pdf_remote_url = https://gitlab.com/username/reponame/-/raw/master/paperfolder/
+supplementary_path = /Users/username/somepath/supp
