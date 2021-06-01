@@ -15,15 +15,17 @@ pip install notion
 
 ## Usage
 
-1. Create a database with following columns in Notion, and copy the database url
+1. Create a new database, and copy the database url
 
-![zotero_db_in_notion](./imgs/zotero_db.png)
+2. Remove all row in the new database
 
-2. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
+3. Copy the database url
 
-3. Obtain your zotero library id and api key
+4. Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
 
-4. Run command,
+5. Obtain your zotero library id and api key
+
+6. Run command,
 
 ```sh
 cd scripts

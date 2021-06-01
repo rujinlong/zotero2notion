@@ -181,7 +181,7 @@ def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
 @click.option("--notion_table_url", '-u', help="Notion table url")
 @click.option("--zotero_library_id", '-l', help="Zotero library id")
 @click.option("--zotero_api_key", '-k', help="Zotero api key")
-@click.option("--zotero_topn", '-n', help="Fetch n most recent records in zotero to compare with the most recent records in Notion")
+@click.option("--zotero_topn", '-n', type=int, help="Fetch n most recent records in zotero to compare with the most recent records in Notion")
 def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, zotero_api_key, zotero_topn):
     """
     Usage:
@@ -194,22 +194,57 @@ def main(impact_factor, cas, notion_token, notion_table_url, zotero_library_id, 
     -k "<zotero_api_key>" \
     -n <zotero_topn>
     """
+
+    properties = {'Subject': {'name': 'Subject', 'type': 'text'},
+                'Authors': {'name': 'Authors', 'type': 'text'},
+                'Url': {'name': 'Url', 'type': 'url'},
+                'Local_file': {'name': 'Local_file', 'type': 'url'},
+                'Title': {'name': 'Title', 'type': 'text'},
+                'Date_added': {'name': 'Date_added', 'type': 'date', 'date_format': 'YYYY/MM/DD', 'time_format': 'H:mm'},
+                'PDF': {'name': 'PDF', 'type': 'url'},
+                'Impact_factor': {'name': 'Impact_factor', 'type': 'number', 'number_format': 'number'},
+                'CAS': {'name': 'CAS', 'type': 'text'},
+                'Modified': {'name': 'Modified', 'type': 'last_edited_time'},
+                'comments': {'name': 'comments', 'type': 'text'},
+                'Journal': {'name': 'Journal', 'type': 'text'},
+                'Date_published': {'name': 'Date_published', 'type': 'date', 'date_format': 'YYYY/MM/DD', 'time_format': 'H:mm'}}
     
+    # Fetch records in zotero library 
+    df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
+    print(df.shape)
+
     # Fetch records in notion table
     client = NotionClient(token_v2=notion_token)
     cv = client.get_collection_view(notion_table_url)
     notion_records = cv.collection.get_rows(sort=[{"direction": "descending", 
                                                    "property": "Date_added"}])
-    notion_latest = notion_records[0]
-    # time_notion = pytz.UTC.localize(notion_latest.date_added.start)
-    mytz = pytz.timezone(get_localzone().zone)
-    time_notion = mytz.localize(notion_latest.date_added.start)
-    title_notion = notion_latest.name
+
+    # If the database is empty, create necessary columns
+    if len(notion_records)==0:
+        # Delete all columns in database
+        # schema = {}
+        # cv.collection.set(path=['schema'], value=schema)
+
+        schema = cv.collection.get()['schema']
+        columns_existed = [x['name'] for x in schema.values()]
+        columns_to_be_added = {x:properties[x] for x in properties if x not in columns_existed}
+        
+        # Create new columns
+        for column in columns_to_be_added:
+            schema[column] = {
+                "name": properties[column]['name'],
+                "type": properties[column]['type']
+            }
+        cv.collection.set(path=['schema'], value=schema)
+    else:
+        notion_latest = notion_records[0]
+        # time_notion = pytz.UTC.localize(notion_latest.date_added.start)
+        mytz = pytz.timezone(get_localzone().zone)
+        time_notion = mytz.localize(notion_latest.date_added.start)
+        title_notion = notion_latest.name
+        df['update'] = df.apply(lambda x:filter_new_zotero_recs(time_notion, title_notion, x), axis=1)
+        df = df[df['update']==True]
     
-    # Fetch records in zotero library 
-    df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
-    df['update'] = df.apply(lambda x:filter_new_zotero_recs(time_notion, title_notion, x), axis=1)
-    df = df[df['update']==True]
     
     if len(df) > 0:
         # Change journal name to lowercase for easier matching with impact facter and CAS table
