@@ -23,6 +23,8 @@ pip install notion
 
 4. Obtain your zotero library id and api key
 
+5. Modify `config.ini.sample` file, rename it to `config.ini` or make a copy
+
 5. Run command,
 
 ```sh
