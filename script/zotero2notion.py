@@ -185,7 +185,7 @@ def main(config, zotero_topn):
     """
     Usage:
     
-    zotero2notion.py -c config.idi -n <zotero_topn>
+    zotero2notion.py -c config.ini -n <zotero_topn>
     """
 
     # Read config file
@@ -218,7 +218,7 @@ def main(config, zotero_topn):
     
     # Fetch records in zotero library 
     df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
-    print(df.shape)
+    print("Updating {} files...".format(df.shape[0]))
 
     # Fetch records in notion table
     client = NotionClient(token_v2=notion_token)
