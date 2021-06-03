@@ -179,7 +179,7 @@ def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
 
 
 @click.command()
-@click.option("--config", '-c', help="config.ini")
+@click.option("--config", '-c', default="~/github/zotero2notion/config.ini", help="config.ini")
 @click.option("--zotero_topn", '-n', type=int, help="Fetch n most recent records in zotero to compare with the most recent records in Notion")
 def main(config, zotero_topn):
     """
