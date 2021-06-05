@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+import os
 import click
 import pandas as pd
 import urllib
 import re
 import notion
+from notion.client import NotionClient
 import os
 from dateutil import parser
 from pyzotero import zotero
@@ -187,6 +189,7 @@ def main(config, zotero_topn):
     """
 
     # Read config file
+    config = os.path.expanduser(config)
     cfg = configparser.ConfigParser()
     cfg.read(config)
     impact_factor = cfg['Resources']['impact_factor']
@@ -219,7 +222,7 @@ def main(config, zotero_topn):
     print("Updating {} files...".format(df.shape[0]))
 
     # Fetch records in notion table
-    client = notion.client.NotionClient(token_v2=notion_token)
+    client = NotionClient(token_v2=notion_token)
     cv = client.get_collection_view(notion_table_url)
     notion_records = cv.collection.get_rows(sort=[{"direction": "descending", 
                                                    "property": "Date_added"}])
