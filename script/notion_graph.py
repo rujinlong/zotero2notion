@@ -7,12 +7,33 @@ from notion.client import NotionClient
 import networkx as nx
 from pyvis.network import Network
 import pandas as pd
+import re
 
-
-def get_edges(x):
-    children = x.get_property('children')
+def get_zettelkasten_links(page):
+    children = page.get_property('children')
     if len(children) != 0:
-        return [[x.title, child.title, x.get_browseable_url(), child.get_browseable_url()] for child in children]
+        edge_items = [[page.title, child.title, page.get_browseable_url(), child.get_browseable_url()] for child in children]
+        return edge_items
+    
+    
+def get_backlinks(client, page):
+    backlinks = page.get_backlinks()
+    edge_items = []
+    for backlink in backlinks:
+        backlink_url = re.sub(r'#.*', '', backlink.get_browseable_url())
+        backlink_page = client.get_block(backlink_url)
+        edge_items.append([page.title, backlink_page.title, page.get_browseable_url(), backlink_url])
+    return edge_items
+
+
+def get_ref_links(client, page):
+    refs = page.refs
+    edge_items = []
+    for ref in refs:
+        ref_url = re.sub(r'#.*', '', ref.get_browseable_url())
+        ref_page = client.get_block(ref_url)
+        edge_items.append([ref_page.title, page.title, ref_url, page.get_browseable_url()])
+    return edge_items
 
 
 @click.command()
@@ -34,15 +55,20 @@ def main(config, notion_table_url, fout, all_nodes):
     # Extract nodes and edges
     edges = []
     nodes = []
-    for item in notion_records:
-        edge_items = get_edges(item)
-        if edge_items:
+    for page in notion_records:
+        edge_zettelkasten = get_zettelkasten_links(page)
+        edge_backlinks = get_backlinks(client, page)
+        edge_refs = get_ref_links(client, page)
+        edge_items = edge_backlinks + edge_refs
+        if edge_zettelkasten:
+            edge_items += edge_zettelkasten
+        if len(edge_items) > 0:
             edges += [e[:2] for e in edge_items if e[1]!='']
             for e in edge_items:
                 nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open')}),
                           (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open')})]
         if all_nodes:
-            nodes.append((item.title, {"title":"<a href='{}', target='_blank'>{}</a>".format(item.get_browseable_url(), 'Open')}))
+            nodes.append((page.title, {"title":"<a href='{}', target='_blank'>{}</a>".format(page.get_browseable_url(), 'Open')}))
             
 
     # Unique nodes
