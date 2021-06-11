@@ -41,7 +41,9 @@ def get_ref_links(client, page):
 @click.option("--notion_table_url", '-u', help="Notion database url")
 @click.option("--fout", '-o', default='notion.html', help="output html file name")
 @click.option('--all_nodes/--linked_nodes', default=False, help="Output all nodes or only linked nodes")
-def main(config, notion_table_url, fout, all_nodes):
+@click.option('--backlinks/--no_backlinks', default=False, help="Output backlink nodes")
+@click.option('--zotero_refs/--no_zotero_refs', default=False, help="Output zotero ref nodes")
+def main(config, notion_table_url, fout, all_nodes, backlinks, zotero_refs):
     config = os.path.expanduser(config)
     cfg = configparser.ConfigParser()
     cfg.read(config)
@@ -57,16 +59,32 @@ def main(config, notion_table_url, fout, all_nodes):
     nodes = []
     for page in notion_records:
         edge_zettelkasten = get_zettelkasten_links(page)
-        edge_backlinks = get_backlinks(client, page)
-        edge_refs = get_ref_links(client, page)
-        edge_items = edge_backlinks + edge_refs
         if edge_zettelkasten:
-            edge_items += edge_zettelkasten
+            edge_items = edge_zettelkasten
+            for e in edge_zettelkasten:
+                nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open'), "color":"red"}),
+                          (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open'), "color":"red"})]
+        else:
+            edge_items = []
+
+        
+        if zotero_refs:
+            edge_refs = get_ref_links(client, page)
+            edge_items += edge_refs
+            for e in edge_refs:
+                nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open'), "color":"green"}),
+                          (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open'), "color":"red"})]
+
+        if backlinks:
+            edge_backlinks = get_backlinks(client, page)
+            edge_items += edge_backlinks
+            for e in edge_backlinks:
+                nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open'), "color":"red"}),
+                          (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open')})]
+
         if len(edge_items) > 0:
             edges += [e[:2] for e in edge_items if e[1]!='']
-            for e in edge_items:
-                nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open')}),
-                          (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open')})]
+
         if all_nodes:
             nodes.append((page.title, {"title":"<a href='{}', target='_blank'>{}</a>".format(page.get_browseable_url(), 'Open')}))
             
@@ -91,7 +109,7 @@ def main(config, notion_table_url, fout, all_nodes):
     for node in nodes_nr:
         node_name = node[0]
         node_attr = node[1]
-        node_attr['size'] = degree[node_name] + 5
+        node_attr['size'] = degree[node_name] + 3
         nodes2.append((node[0], node_attr))
 
     # Create final graph
