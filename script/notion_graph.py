@@ -72,6 +72,7 @@ def main(config, notion_table_url, fout, all_nodes, backlinks, zotero_refs):
             edge_refs = get_ref_links(client, page)
             edge_items += edge_refs
             for e in edge_refs:
+                # source: refs; target: zettelkasten
                 nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open'), "color":"green"}),
                           (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open'), "color":"red"})]
 
@@ -79,6 +80,7 @@ def main(config, notion_table_url, fout, all_nodes, backlinks, zotero_refs):
             edge_backlinks = get_backlinks(client, page)
             edge_items += edge_backlinks
             for e in edge_backlinks:
+                # source: zettelkasten
                 nodes += [(e[0], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[2], 'Open'), "color":"red"}),
                           (e[1], {"title":"<a href='{}', target='_blank'>{}</a>".format(e[3], 'Open')})]
 

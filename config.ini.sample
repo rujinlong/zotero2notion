@@ -1,5 +1,5 @@
 [Resources]
-impact_factor = ~/github/zotero2notion/data/impact_factor_2020.tsv
+impact_factor = ~/github/zotero2notion/data/impact_factor_2021.tsv
 cas = ~/github/zotero2notion/data/cas2019.tsv
 
 [Notion]
