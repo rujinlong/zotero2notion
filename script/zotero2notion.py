@@ -5,13 +5,10 @@ import click
 import pandas as pd
 import urllib
 import re
-import notion
-from notion.client import NotionClient
+from notion_client import Client
 import os
 from dateutil import parser
 from pyzotero import zotero
-import pytz
-from tzlocal import get_localzone
 import configparser
 
 
@@ -76,20 +73,27 @@ def reformat_names(names):
         return ""
 
 
-def add_row(cv, x, pdf_local_url, pdf_remote_url):
-    row = cv.collection.add_row()
-    row.name = x['Name']
-    row.impact_factor = x['Impact_factor']
-    row.journal = x['Journal']
-    row.local_file = x['Local_file']
-    row.pdf = row.local_file.replace(pdf_local_url, pdf_remote_url)
-    row.url = x['Url']
-    row.date_published = notion.collection.NotionDate(x['Date_published'])
-    row.date_added = notion.collection.NotionDate(x['Date_added'])
-    row.title = x['Title']
-    row.authors = x['Authors']
-    row.cas = x['Cas']
-    row.subject = x['Subject']
+def new_row(zotrec):
+    text_items = ["Subject", "Authors", "CAS", "Title", "Journal"]
+    url_items = ["Url", "Local_file", "PDF"]
+    date_items = ["Date_added", "Date_published"]
+    num_items = ["Impact_factor"]
+
+    props = {}
+    for key in text_items:
+        props[key] = {'type': 'rich_text', 'rich_text': [{'type': 'text', 'text': {'content': zotrec[key]},}]}
+
+    for key in url_items:
+        props[key] = {'type': 'url', 'url': zotrec[key]}
+
+    for key in date_items:
+        props[key] = {'type': 'date', 'date': {'start': zotrec[key], 'end': None}}
+
+    for key in num_items:
+        props[key] = {'type': 'number', 'number': zotrec[key]}
+    
+    props["Name"] = {"title":[{"text":{"content": zotrec['Name']}}]}
+    return props
 
 
 def add_supp_dir(pdf_local_folder, supplementary_file_path):
@@ -107,7 +111,7 @@ def add_supp_dir(pdf_local_folder, supplementary_file_path):
 
 def merge_IF_CAS(impact_factor, cas):
     dfcas = pd.read_csv(cas, sep='\t')
-    dfcas = dfcas[['journal', 'Cas', 'Subject']].copy()
+    dfcas = dfcas[['journal', 'CAS', 'Subject']].copy()
     dfcas['journal'] = dfcas.apply(lambda x:str(x['journal']).lower(), axis=1)
     dfcas['Subject'] = dfcas.apply(lambda x:str(x['Subject']).capitalize(), axis=1)
 
@@ -117,9 +121,9 @@ def merge_IF_CAS(impact_factor, cas):
     
     df = dfif.merge(dfcas, on="journal", how="outer").drop_duplicates()
     df.Impact_factor.fillna(0, inplace=True)
-    df.Cas.fillna("NA", inplace=True)
+    df.CAS.fillna("NA", inplace=True)
     df.Subject.fillna("NA", inplace=True)
-    return df.groupby('journal', as_index=False).agg({'Subject' : '; '.join, 'Impact_factor': 'first', 'Cas' : 'first'})
+    return df.groupby('journal', as_index=False).agg({'Subject' : '; '.join, 'Impact_factor': 'first', 'CAS' : 'first'})
 
 
 def select_attachment_items(items):
@@ -136,7 +140,7 @@ def add_parent_info(zot, child):
     parent = zot.item(child['parentItem'])['data']
     
     child['Author'] = combine_authors(parent.get('creators'))
-    child['Date_published'] = parser.parse(parent.get('date'))
+    child['Date_published'] = parser.parse(parent.get('date')).astimezone()
     child['Publication Title'] = parent.get('publicationTitle')
     child['Url'] = parent.get('url')
     child['Title'] = parent.get('title')
@@ -195,7 +199,7 @@ def main(config, zotero_topn):
     impact_factor = cfg['Resources']['impact_factor']
     cas = cfg['Resources']['cas']
     notion_token = cfg['Notion']['notion_token']
-    notion_table_url = cfg['Notion']['notion_table_url']
+    notion_table_id = cfg['Notion']['notion_table_id']
     zotero_library_id = cfg['Zotero']['zotero_library_id']
     zotero_api_key = cfg['Zotero']['zotero_api_key']
     pdf_local_folder = cfg['PDFs']['pdf_local_folder']
@@ -203,84 +207,84 @@ def main(config, zotero_topn):
     pdf_remote_url = cfg['PDFs']['pdf_remote_url']
     supplementary_path = cfg['PDFs']['supplementary_path']
 
-    properties = {'Subject': {'name': 'Subject', 'type': 'text'},
-                'Authors': {'name': 'Authors', 'type': 'text'},
-                'Url': {'name': 'Url', 'type': 'url'},
-                'Local_file': {'name': 'Local_file', 'type': 'url'},
-                'Title': {'name': 'Title', 'type': 'text'},
-                'Date_added': {'name': 'Date_added', 'type': 'date', 'date_format': 'YYYY/MM/DD', 'time_format': 'H:mm'},
-                'PDF': {'name': 'PDF', 'type': 'url'},
-                'Impact_factor': {'name': 'Impact_factor', 'type': 'number', 'number_format': 'number'},
-                'CAS': {'name': 'CAS', 'type': 'text'},
-                'Modified': {'name': 'Modified', 'type': 'last_edited_time'},
-                'comments': {'name': 'comments', 'type': 'text'},
-                'Journal': {'name': 'Journal', 'type': 'text'},
-                'Date_published': {'name': 'Date_published', 'type': 'date', 'date_format': 'YYYY/MM/DD', 'time_format': 'H:mm'}}
+#     properties = {'Subject': {'name': 'Subject', 'type': 'text'},
+#                 'Authors': {'name': 'Authors', 'type': 'text'},
+#                 'Url': {'name': 'Url', 'type': 'url'},
+#                 'Local_file': {'name': 'Local_file', 'type': 'url'},
+#                 'Title': {'name': 'Title', 'type': 'text'},
+#                 'Date_added': {'name': 'Date_added', 'type': 'date', 'date_format': 'YYYY/MM/DD', 'time_format': 'H:mm'},
+#                 'PDF': {'name': 'PDF', 'type': 'url'},
+#                 'Impact_factor': {'name': 'Impact_factor', 'type': 'number', 'number_format': 'number'},
+#                 'CAS': {'name': 'CAS', 'type': 'text'},
+#                 'Modified': {'name': 'Modified', 'type': 'last_edited_time'},
+#                 'comments': {'name': 'comments', 'type': 'text'},
+#                 'Journal': {'name': 'Journal', 'type': 'text'},
+#                 'Date_published': {'name': 'Date_published', 'type': 'date', 'date_format': 'YYYY/MM/DD', 'time_format': 'H:mm'}}
     
     # Fetch records in zotero library 
     df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
-    print("Updating {} files...".format(df.shape[0]))
+    # Change journal name to lowercase for easier matching with impact facter and CAS table
+    df['journal'] = df.apply(lambda x:journal_lower(x), axis=1)
 
-    # Fetch records in notion table
-    client = NotionClient(token_v2=notion_token)
-    cv = client.get_collection_view(notion_table_url)
-    notion_records = cv.collection.get_rows(sort=[{"direction": "descending", 
-                                                   "property": "Date_added"}])
+    # Link records with impact factor and CAS classification
+    dfif = merge_IF_CAS(impact_factor, cas)
+    tbl = df.merge(dfif, on='journal', how='left')
+
+    # Add extra information based on zotero metadata
+    tbl['Date_added'] = tbl.apply(lambda x: str(x['Date_added']), axis=1)
+    tbl['Date_published'] = tbl.apply(lambda x: str(x['Date_published']), axis=1)
+    tbl['Local_file'] = tbl.apply(lambda x: pdf_url(x, pdf_local_url), axis=1)
+    tbl['Name'] = tbl.apply(lambda x: file_name(x), axis=1)
+    tbl['Impact_factor'] = tbl.apply(lambda x:round(x['Impact_factor'], 1), axis=1)
+    tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
+    tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
+    tbl.Impact_factor.fillna(0, inplace=True)
+    tbl.CAS.fillna("NA", inplace=True)
+    tbl.Subject.fillna("NA", inplace=True)
+    tbl.fillna('', inplace=True)
+
+    # Some journals in zotero are not in CAS or JCR, set them as NA
+    # todo: manually check these recores, because most of them are false renamed by zotero
+    tbl['CAS'] = tbl.apply(lambda x: x['CAS'] if len(x['CAS'])==2 else 'NA', axis=1)
+    tbl['PDF'] = tbl.apply(lambda x: x['Local_file'].replace(pdf_local_url, pdf_remote_url), axis=1)
+
+
+    # Fetch recent 100 records from notion table
+    notion = Client(auth=notion_token)
+    notion_records = notion.databases.query(**{"database_id": notion_table_id,
+                             "sort": [{"timestamp":"Date_added", "direction":"descending"}]})
 
     # If the database is empty, create necessary columns
-    if len(notion_records)==0:
+    if len(notion_records['results'])==0:
+        print("This is an empty notion database, please ensure you set columns properly")
+        # ------ TODO: set columns --------
         # Delete all columns in database
         # schema = {}
         # cv.collection.set(path=['schema'], value=schema)
 
-        schema = cv.collection.get()['schema']
-        columns_existed = [x['name'] for x in schema.values()]
-        columns_to_be_added = {x:properties[x] for x in properties if x not in columns_existed}
+#         schema = cv.collection.get()['schema']
+#         columns_existed = [x['name'] for x in schema.values()]
+#         columns_to_be_added = {x:properties[x] for x in properties if x not in columns_existed}
         
-        # Create new columns
-        for column in columns_to_be_added:
-            schema[column] = {
-                "name": properties[column]['name'],
-                "type": properties[column]['type']
-            }
-        cv.collection.set(path=['schema'], value=schema)
+#         # Create new columns
+#         for column in columns_to_be_added:
+#             schema[column] = {
+#                 "name": properties[column]['name'],
+#                 "type": properties[column]['type']
+#             }
+#         cv.collection.set(path=['schema'], value=schema)
     else:
-        notion_latest = notion_records[0]
-        # time_notion = pytz.UTC.localize(notion_latest.date_added.start)
-        mytz = pytz.timezone(get_localzone().zone)
-        time_notion = mytz.localize(notion_latest.date_added.start)
-        title_notion = notion_latest.name
-        df['update'] = df.apply(lambda x:filter_new_zotero_recs(time_notion, title_notion, x), axis=1)
-        df = df[df['update']==True]
+        literature_existed = [x["properties"]["Name"]['title'][0]['text']['content'] for x in notion_records['results']]
+        tbl = tbl[~tbl.Name.isin(literature_existed)]
+        print("Updating {} files...".format(tbl.shape[0]))
     
-    
-    if len(df) > 0:
-        # Change journal name to lowercase for easier matching with impact facter and CAS table
-        df['journal'] = df.apply(lambda x:journal_lower(x), axis=1)
 
-        # Link records with impact factor and CAS classification
-        dfif = merge_IF_CAS(impact_factor, cas)
-        tbl = df.merge(dfif, on='journal', how='left')
-
-        # Add extra information based on zotero metadata
-        tbl['Local_file'] = tbl.apply(lambda x: pdf_url(x, pdf_local_url), axis=1)
-        tbl['Name'] = tbl.apply(lambda x: file_name(x), axis=1)
-        tbl['Impact_factor'] = tbl.apply(lambda x:round(x['Impact_factor'], 1), axis=1)
-        tbl['Authors'] = tbl.apply(lambda x:reformat_names(x['Author']), axis=1)
-        tbl.rename(columns={"Publication Title": "Journal"}, inplace=True)
-        tbl.Impact_factor.fillna(0, inplace=True)
-        tbl.Cas.fillna("NA", inplace=True)
-        tbl.Subject.fillna("NA", inplace=True)
-        tbl.fillna('', inplace=True)
-
-        # Some journals in zotero are not in CAS or JCR, set them as NA
-        # todo: manually check these recores, because most of them are false renamed by zotero
-        tbl['Cas'] = tbl.apply(lambda x: x['Cas'] if len(x['Cas'])==2 else 'NA', axis=1)
-
-        ## Add to notion
+    ## Add to notion
+    if len(tbl) > 0:
         recs = tbl.to_dict(orient="records")
         for rec in recs:
-            add_row(cv, rec, pdf_local_url, pdf_remote_url)
+            props = new_row(rec)
+            notion.pages.create(parent={"database_id": notion_table_id}, properties=props)
     else:
         print("No new records in zotero library!")
     
