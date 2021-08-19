@@ -128,11 +128,14 @@ def merge_IF_CAS(impact_factor, cas):
 
 def select_attachment_items(items):
     items_with_attachment = []
+    parent_keys = list(set([x['key'] for x in items if not x['data'].get('contentType')]))
+    attachment_keys = list(set([x['key'] for x in items if x['data'].get('contentType')=="application/pdf"]))
     for item in items:
-        data = item.get('data')
-        attachment = data.get('contentType')
-        if attachment == "application/pdf":
-            items_with_attachment.append(data)
+        if item['key'] in attachment_keys:
+            parent_key = item.get('links')['up']['href'].split('/')[-1]
+            # Remove trash items
+            if parent_key in parent_keys:
+                items_with_attachment.append(item['data'])
     return items_with_attachment
 
 
