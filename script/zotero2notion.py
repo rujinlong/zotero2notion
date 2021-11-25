@@ -72,12 +72,31 @@ def reformat_names(names):
     else:
         return ""
 
+def get_notion_pageID_by_pageName(notion_connect, notion_table_id, page_name):
+    query = notion_connect.databases.query(**{
+        "database_id": notion_table_id, 
+        "filter":{
+            "property": "Name", 
+            "text":{
+                "equals": page_name,
+                },
+            },
+        }
+    )
+    rst = query['results']
+    if len(rst) > 0:
+        page_id = rst[0]['id']
+    else:
+        page_id = ""
+    return page_id
 
-def new_row(zotrec):
+
+def new_row(notion_connect, notion_table_id, zotrec):
     text_items = ["Subject", "Authors", "CAS", "Title", "Journal"]
     url_items = ["Url", "Local_file", "PDF"]
     date_items = ["Date_added", "Date_published"]
     num_items = ["Impact_factor"]
+    relation_items = ["crossref1"]
 
     props = {}
     for key in text_items:
@@ -91,6 +110,14 @@ def new_row(zotrec):
 
     for key in num_items:
         props[key] = {'type': 'number', 'number': zotrec[key]}
+    
+    for key in relation_items:
+        # x[:-4] removes ".pdf" in file name
+        page_ids = [get_notion_pageID_by_pageName(notion_connect, notion_table_id, x[:-4]) for x in zotrec[key]]
+        relation_pages = [{'id':page_id} for page_id in page_ids if page_id!=""]
+        if len(relation_pages) > 0:
+            print(relation_pages)
+            props[key] = {'type': 'relation', 'relation': relation_pages}
     
     props["Name"] = {"title":[{"text":{"content": zotrec['Name']}}]}
     return props
@@ -139,6 +166,23 @@ def select_attachment_items(items):
     return items_with_attachment
 
 
+def get_children_title_from_parent_key(zot, parent_key):
+    children_title = zot.children(parent_key)[0]['data']['title']
+    return children_title
+
+def get_relation_titles(zot, parent):
+    relation_info = parent['relations']
+    if relation_info.get('dc:relation'):
+        relations = relation_info['dc:relation']
+        if isinstance(relations, str):
+            relations = [relations]
+        relation_keys = [x.split('/')[-1] for x in relations]
+        relation_titles = [get_children_title_from_parent_key(zot, x) for x in relation_keys]
+    else:
+        relation_titles = []
+    return relation_titles
+
+
 def add_parent_info(zot, child):
     parent = zot.item(child['parentItem'])['data']
     
@@ -149,8 +193,9 @@ def add_parent_info(zot, child):
     child['Title'] = parent.get('title')
     child['File Attachments'] = child.get('filename')
     child['Date_added'] = parser.parse(child.get('dateAdded')).astimezone()
+    child['crossref1'] = get_relation_titles(zot, parent)
 
-    keys = ['Author', 'Date_published', 'Publication Title', 'File Attachments', 'Date_added', 'Url', 'Title']
+    keys = ['Author', 'Date_published', 'Publication Title', 'File Attachments', 'Date_added', 'Url', 'Title', 'crossref1']
     return {k:child[k] for k in keys}
 
 
@@ -183,6 +228,7 @@ def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
     else:
         update = False
     return update
+
 
 
 @click.command()
@@ -286,7 +332,7 @@ def main(config, zotero_topn):
     if len(tbl) > 0:
         recs = tbl.to_dict(orient="records")
         for rec in recs:
-            props = new_row(rec)
+            props = new_row(notion, notion_table_id, rec)
             notion.pages.create(parent={"database_id": notion_table_id}, properties=props)
     else:
         print("No new records in zotero library!")
