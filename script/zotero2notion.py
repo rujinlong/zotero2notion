@@ -196,6 +196,7 @@ def add_parent_info(zot, child):
     child['crossref1'] = get_relation_titles(zot, parent)
 
     keys = ['Author', 'Date_published', 'Publication Title', 'File Attachments', 'Date_added', 'Url', 'Title', 'crossref1']
+    # keys = ['Author', 'Date_published', 'Publication Title', 'File Attachments', 'Date_added', 'Url', 'Title']
     return {k:child[k] for k in keys}
 
 
@@ -332,8 +333,11 @@ def main(config, zotero_topn):
     if len(tbl) > 0:
         recs = tbl.to_dict(orient="records")
         for rec in recs:
-            props = new_row(notion, notion_table_id, rec)
-            notion.pages.create(parent={"database_id": notion_table_id}, properties=props)
+            try:
+                props = new_row(notion, notion_table_id, rec)
+                notion.pages.create(parent={"database_id": notion_table_id}, properties=props)
+            except:
+                print(props)
     else:
         print("No new records in zotero library!")
     
