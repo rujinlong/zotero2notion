@@ -93,7 +93,7 @@ def get_notion_pageID_by_pageName(notion_connect, notion_table_id, page_name):
 
 def new_row(notion_connect, notion_table_id, zotrec):
     text_items = ["Subject", "Authors", "CAS", "Title", "Journal"]
-    url_items = ["Url", "Local_file", "PDF"]
+    url_items = ["Url", "Local_file", "PDF", "Graph"]
     date_items = ["Date_added", "Date_published"]
     num_items = ["Impact_factor"]
     relation_items = ["crossref1"]
@@ -255,6 +255,7 @@ def main(config, zotero_topn):
     pdf_local_folder = cfg['PDFs']['pdf_local_folder']
     pdf_local_url = cfg['PDFs']['pdf_local_url']
     pdf_remote_url = cfg['PDFs']['pdf_remote_url']
+    url_connected_papers = cfg['PDFs']['url_connected_papers']
     supplementary_path = cfg['PDFs']['supplementary_path']
 
 #     properties = {'Subject': {'name': 'Subject', 'type': 'text'},
@@ -297,7 +298,7 @@ def main(config, zotero_topn):
     # todo: manually check these recores, because most of them are false renamed by zotero
     tbl['CAS'] = tbl.apply(lambda x: x['CAS'] if len(x['CAS'])==2 else 'NA', axis=1)
     tbl['PDF'] = tbl.apply(lambda x: x['Local_file'].replace(pdf_local_url, pdf_remote_url), axis=1)
-
+    tbl['Graph'] = tbl.apply(lambda x: url_connected_papers+urllib.parse.quote(x['Title']), axis=1)
 
     # Fetch recent 100 records from notion table
     notion = Client(auth=notion_token)

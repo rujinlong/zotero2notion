@@ -2,7 +2,16 @@
 
 import click
 import configparser
-from notion.client import NotionClient
+import urllib
+from notion_client import Client
+
+def notion_db_query(client, notion_table_id, cursur=None):
+    if cursur is None:
+        notion_records = client.databases.query(**{"database_id": notion_table_id})
+    else:
+        notion_records = client.databases.query(**{"database_id": notion_table_id,
+                                                "start_cursor": cursur})
+    return notion_records
 
 
 @click.command()
@@ -18,18 +27,28 @@ def main(config):
     cfg = configparser.ConfigParser()
     cfg.read(config)
     notion_token = cfg['Notion']['notion_token']
-    notion_table_url = cfg['Notion']['notion_table_url']
-    pdf_local_url = cfg['PDFs']['pdf_local_url']
-    pdf_remote_url = cfg['PDFs']['pdf_remote_url']
+    notion_table_id = cfg['Notion']['notion_table_id']
+    url_connected_papers = cfg['PDFs']['url_connected_papers']
 
-    # Fetch records in notion table
-    client = NotionClient(token_v2=notion_token)
-    cv = client.get_collection_view(notion_table_url)
-    notion_records = cv.collection.get_rows(sort=[{"direction": "descending", 
-                                                   "property": "Date_added"}])
-    for nr in notion_records:
-        nr.local_file = nr.local_file.replace("http://jinlong.local:8668/zotero_papers/", pdf_local_url)
-        nr.pdf = nr.local_file.replace(pdf_local_url, pdf_remote_url)
+    notion = Client(auth=notion_token)
+    cursor = 1
+    while cursor:
+        if cursor == 1:
+            cursor = None
+        notion_records = notion_db_query(notion, notion_table_id, cursor)
+
+        for nr in notion_records['results']:
+            if nr['properties']['Graph']['url'] is None:
+                title = nr['properties']['Title']['rich_text'][0]['plain_text']
+                print(title)
+                try:
+                    url = urllib.parse.quote(title)
+                    notion.pages.update(nr['id'], properties={"Graph":{'type':'url', 'url':url_connected_papers+url}})
+                except:
+                    continue
+
+        cursor = notion_records['next_cursor']
+
 
 if __name__ == '__main__':
     main()
