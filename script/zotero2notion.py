@@ -191,7 +191,7 @@ def add_parent_info(zot, child):
     child['Publication Title'] = parent.get('publicationTitle')
     child['Url'] = parent.get('url')
     child['Title'] = parent.get('title')
-    child['File Attachments'] = child.get('filename')
+    child['File Attachments'] = child.get('title')
     child['Date_added'] = parser.parse(child.get('dateAdded')).astimezone()
     child['crossref1'] = get_relation_titles(zot, parent)
 
