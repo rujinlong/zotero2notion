@@ -10,7 +10,8 @@ import os
 from dateutil import parser
 from pyzotero import zotero
 import configparser
-
+import bibtexparser
+from bibtexparser.bparser import BibTexParser
 
 def file_name(x):
     return re.sub(r'.pdf$', '', x['File Attachments'].split('/')[-1])
@@ -231,6 +232,48 @@ def filter_new_zotero_recs(time_notion, title_notion, rec_zotero):
     return update
 
 
+# Add bibtex to CiteKey database
+def new_row_citekey(notion, notion_db_zotero_id, rec):
+    props = {}
+    page_id = get_notion_pageID_by_pageName(notion, notion_db_zotero_id, rec["pdf_name"][:-4])
+    if page_id != "":
+        relation_page = [{'id': page_id}]
+        if len(relation_page) > 0:
+            props["pdf_name"] = {'type': 'relation', 'relation': relation_page}
+        
+        props["Name"] = {"title":[{"text":{"content": rec['citekey']}}]}
+    else:
+        props = ""
+    return props
+
+def update_citekey(notion, notion_db_citekey_id, notion_db_zotero_id, bibtex, df_new_papers):
+    new_papers = df_new_papers["Name"].tolist()
+    parser = BibTexParser(common_strings=True)
+    parser.ignore_nonstandard_types = True
+    parser.common_strings = False
+    
+    bibs = []
+    with open(bibtex, "r") as fh:
+        bib_str = fh.read()
+    bibdb = bibtexparser.loads(bib_str, parser=parser)
+    for bib in bibdb.entries:
+        if "file" in bib.keys():
+            citekey = bib["ID"]
+            pdf_name = bib["file"].split(";")[0].split("/")[-1]
+            title = pdf_name[:-4]  # remove .pdf/.PDF extension
+            if title in new_papers:
+                bibs.append([citekey, pdf_name])
+
+    if len(bibs) > 0:
+        df = pd.DataFrame(bibs, columns=["citekey", "pdf_name"])
+        bib_recs = df.to_dict(orient="records")
+
+        for rec in bib_recs:
+            props = new_row_citekey(notion, notion_db_zotero_id, rec)
+            if props != "":
+                notion.pages.create(parent={"database_id": notion_db_citekey_id}, properties=props)
+
+
 
 @click.command()
 @click.option("--config", '-c', default="~/github/zotero2notion/config.ini", help="config.ini")
@@ -248,8 +291,10 @@ def main(config, zotero_topn):
     cfg.read(config)
     impact_factor = cfg['Resources']['impact_factor']
     cas = cfg['Resources']['cas']
+    bibtex = cfg['Resources']['bibtex']
     notion_token = cfg['Notion']['notion_token']
     notion_table_id = cfg['Notion']['notion_table_id']
+    notion_db_citekey_id = cfg['Notion']['notion_db_citekey_id']
     zotero_library_id = cfg['Zotero']['zotero_library_id']
     zotero_api_key = cfg['Zotero']['zotero_api_key']
     pdf_local_folder = cfg['PDFs']['pdf_local_folder']
@@ -274,6 +319,7 @@ def main(config, zotero_topn):
     
     # Fetch records in zotero library 
     df = fetch_zotero_records(zotero_library_id, zotero_api_key, zotero_topn)
+    print(df.shape)
     # Change journal name to lowercase for easier matching with impact facter and CAS table
     df['journal'] = df.apply(lambda x:journal_lower(x), axis=1)
 
@@ -344,6 +390,11 @@ def main(config, zotero_topn):
     
     # Create folder for supplementary files
     add_supp_dir(pdf_local_folder, supplementary_path)
+
+    # Update CiteKey database
+    if len(tbl) > 0:
+        if len(bibtex) > 0:
+            update_citekey(notion, notion_db_citekey_id, notion_table_id, bibtex, tbl)
 
 
 if __name__ == '__main__':
