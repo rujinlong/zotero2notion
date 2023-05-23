@@ -101,10 +101,16 @@ def new_row(notion_connect, notion_table_id, zotrec):
 
     props = {}
     for key in text_items:
-        props[key] = {'type': 'rich_text', 'rich_text': [{'type': 'text', 'text': {'content': zotrec[key]},}]}
+        if key in zotrec:
+            props[key] = {'type': 'rich_text', 'rich_text': [{'type': 'text', 'text': {'content': zotrec[key]},}]}
+        else:
+            props[key] = {'type': 'rich_text', 'rich_text': [{'type': 'text', 'text': {'content': ""},}]}
 
     for key in url_items:
-        props[key] = {'type': 'url', 'url': zotrec[key]}
+        if key in zotrec:
+            props[key] = {'type': 'url', 'url': zotrec[key]}
+        else:
+            props[key] = {'type': 'url', 'url': ''}
 
     for key in date_items:
         props[key] = {'type': 'date', 'date': {'start': zotrec[key], 'end': None}}
