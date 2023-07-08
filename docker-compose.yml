@@ -1,0 +1,14 @@
+# Usage: docker-compose run --name tmkit-dev tmkit
+version: '3'
+services:
+  zotero2notion-arm64:
+    image: "jinlongru/python-dev:v0.0.2"
+    platform: linux/arm64
+    volumes:
+      - ./:/workspace
+
+  zotero2notion:
+    image: "jinlongru/python-dev:v0.0.2"
+    platform: linux/amd64
+    volumes:
+      - ./:/workspace

@@ -1,0 +1,20 @@
+name: Anaconda
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    name: build2anaconda
+    steps:
+      - name: get_repo
+        uses: actions/checkout@v3
+      - name: localbuild
+        id: p2a
+        uses: rujinlong/build_anaconda_package@v1.0
+        with:
+          AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
+          CONDADIR: ".conda"

@@ -1,7 +1,3 @@
-[Resources]
-impact_factor = ~/github/zotero2notion/data/impact_factor_2021.tsv
-cas = ~/github/zotero2notion/data/cas2019.tsv
-
 [Notion]
 notion_token = secret_abcabcabcabcabcabcabcabcabcabca
 notion_table_id = defgdefgdefgdefgdefgdefgdefgdefg

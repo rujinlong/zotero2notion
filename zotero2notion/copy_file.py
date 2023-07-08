@@ -1,28 +1,29 @@
 #!/usr/bin/env python
 
-import click
 import os
-import pandas as pd
 import shutil
+
+import click
+import pandas as pd
 
 
 @click.command()
-@click.option("--fin", '-i', help="input file name")
-@click.option("--save_dir", '-s', help="output directory name")
+@click.option("--fin", "-i", help="input file name")
+@click.option("--save_dir", "-s", help="output directory name")
 def main(fin, save_dir):
     """
     Usage:
         copy_file.py -i flist.txt -s newdir
 
     """
-    flist = pd.read_csv(fin, names=['fname'])
+    flist = pd.read_csv(fin, names=["fname"])
 
     paper_dir = "/Users/allen/Dropbox/zotero_papers/"
     papers = os.listdir(paper_dir)
-    df = pd.DataFrame(papers, columns=['paper'])
-    df['fname'] = df.apply(lambda x:'.'.join(x['paper'].split('.')[:-1]), axis=1)
+    df = pd.DataFrame(papers, columns=["paper"])
+    df["fname"] = df.apply(lambda x: ".".join(x["paper"].split(".")[:-1]), axis=1)
 
-    tbl = flist.merge(df, on='fname', how='left')
+    tbl = flist.merge(df, on="fname", how="left")
 
     try:
         os.mkdir(save_dir)
@@ -34,5 +35,5 @@ def main(fin, save_dir):
         shutil.copy(fname, save_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

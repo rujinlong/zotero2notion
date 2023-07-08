@@ -1,0 +1,25 @@
+package:
+  name: "zotero2notion"
+  version: "0.1.3"
+
+source:
+  path: "../"
+
+build:
+  number: 0
+  entry_points:
+    - zotero2notion=zotero2notion.__main__:app
+  script: "pip install . --ignore-installed -vvv"
+
+requirements:
+  host:
+    - python=3.10
+    - poetry
+  run:
+    - python=3.10
+
+about:
+  home: "https://github.com/2003100127/tmkit"
+  license: GPL-3.0
+  license_family: GPL
+  summary: "Import zotero library to notion database"
