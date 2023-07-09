@@ -44,7 +44,7 @@ jobs:
           images: ${{ matrix.image }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: "."
           file: ${{ matrix.dockerfile }}

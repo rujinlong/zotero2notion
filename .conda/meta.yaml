@@ -1,6 +1,6 @@
 package:
   name: "zotero2notion"
-  version: "0.1.4"
+  version: "0.1.6"
 
 source:
   path: "../"
@@ -17,6 +17,11 @@ requirements:
     - poetry
   run:
     - python=3.10
+    - bibtexparser
+    - typer
+    - pandas
+    - notion-client
+    - pyzotero
 
 about:
   home: "https://github.com/2003100127/tmkit"
