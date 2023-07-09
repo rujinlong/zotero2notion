@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "zotero2notion"
-version = "0.1.3"
+version = "0.1.4"
 description = "Import zotero library to notion database"
 readme = "README.md"
 authors = ["rujinlong <jinlong.ru@gmail.com>"]
