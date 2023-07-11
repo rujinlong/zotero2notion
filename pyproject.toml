@@ -45,7 +45,7 @@ pyzotero = "^1.5.9"
 
 [tool.poetry.dev-dependencies]
 bandit = "^1.7.1"
-black = {version = "^23.3", allow-prereleases = true, extras = ["jupyter"]}
+black = {version = "^23.7", allow-prereleases = true, extras = ["jupyter"]}
 darglint = "^1.8.1"
 isort = {extras = ["colors"], version = "^5.10.1"}
 mypy = "^0.910"
