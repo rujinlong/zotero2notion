@@ -39,7 +39,7 @@ rich = "^13.4.2"
 typer = {extras = ["all"], version = "^0.9.0"}
 click = "^8.1.5"
 bibtexparser = "^1.3.0"
-pandas = "^2.0.3"
+pandas = "^2.1.0"
 notion-client = "^2.0.0"
 pyzotero = "^1.5.9"
 
