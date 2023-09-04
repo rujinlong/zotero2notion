@@ -11,7 +11,7 @@ jobs:
     name: build2anaconda
     steps:
       - name: get_repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: localbuild
         id: p2a
         uses: rujinlong/build_anaconda_package@v1.0
